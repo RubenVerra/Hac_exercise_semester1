@@ -2,51 +2,38 @@
 #include <stdlib.h>
 #include "cuda.h"
 #include "cuda_runtime.h"
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_write.h"
- 
-struct Pixel
-{
- unsigned char r, g, b, a;
-};
- 
-void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
-{
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-            unsigned char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
-            ptrPixel->r = pixelValue;
-            ptrPixel->g = pixelValue;
-            ptrPixel->b = pixelValue;
-            ptrPixel->a = 255;
-        }
-    }
-}
- 
-__global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, int width, int height )
-{
-  int x = threadIdx.x + blockIdx.x * blockDim.x;
-  int y = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if(y < height && x < width)
-    {
-            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-            unsigned char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
-            ptrPixel->r = pixelValue;
-            ptrPixel->g = pixelValue;
-            ptrPixel->b = pixelValue;
-            ptrPixel->a = 255;
-    }
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 
-}
-  
+#define MATRIX  9
+#define WMATRIX 3
+#define HMATRIX 3
+
+
+ 
+
+ __global__  void 2Dconvolution(float *ImageData, int matrix, int width, int height)
+ {  
+    /*
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    */
+
+    //each block is assigned to a row of an image, iy integer index of y
+    int iy = blockIdx.x + (MATRIX - 1)/2;
+    //each thread is assigned to a pixel of a row, ix integer index of x
+    int ix = threadIdx.x + (MATRIX - 1)/2;
+
+    
+
+ }
+
 int main(int argc, char** argv)
 {
+    for(int i = 1; i < argc; i++)
     // Check argument count
     if (argc < 2)
     {
@@ -57,7 +44,7 @@ int main(int argc, char** argv)
     // Open image
     int width, height, componentCount;
     printf("Loading png file...\r\n");
-    unsigned char* imageData = stbi_load(argv[1], &width, &height, &componentCount, 4);
+    unsigned char* imageData = stbi_load(argv[i], &width, &height, &componentCount, 4);
     if (!imageData)
     {
         printf("Failed to open Image\r\n");
@@ -76,10 +63,12 @@ int main(int argc, char** argv)
  
     
     // Process image on cpu
+    /*
     printf("Processing image...\r\n");
-    ConvertImageToGrayCpu(imageData, width, height);
-    printf(" DONE \r\n");
     
+    printf(" DONE \r\n");
+    */
+
     // Copy data to the gpu
     printf("Copy data to GPU...\r\n");
     unsigned char* ptrImageDataGpu = nullptr;
@@ -91,7 +80,7 @@ int main(int argc, char** argv)
     printf("Running CUDA Kernel...\r\n");
     dim3 blockSize(32, 32);
     dim3 gridSize(width / blockSize.x, height / blockSize.y);
-    ConvertImageToGrayGpu<<<gridSize, blockSize>>>(ptrImageDataGpu, height, width);
+    2Dconvolution<<gridSize,blockSize>>(ptrImageDataGpu, MATRIX, width, height );
     printf(" DONE \r\n" ); 
  
     // Copy data from the gpu
@@ -100,8 +89,21 @@ int main(int argc, char** argv)
     printf(" DONE \r\n");
  
     // Build output filename
-    const char * fileNameOut = "gray.png";
- 
+    switch argc:
+    case 1
+
+
+    switch(i) {
+  case 1:
+    const char * fileNameOut = "image1.png";  
+  case 2:
+    const char * fileNameOut = "image2.png";
+  case 3:
+    const char * fileNameOut = "image3.png";
+  default:
+
+}
+
     // Write image back to disk
     printf("Writing png to disk...\r\n");
     stbi_write_png(fileNameOut, width, height, 4, imageData, 4 * width);
@@ -111,3 +113,4 @@ int main(int argc, char** argv)
     cudaFree(ptrImageDataGpu);
     stbi_image_free(imageData);
 }
+
