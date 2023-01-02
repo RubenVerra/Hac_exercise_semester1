@@ -15,24 +15,44 @@
 
  
 
- __global__  void 2Dconvolution(float *ImageData, int matrix, int width, int height)
+ __global__ void Convolution(float *ImageData, float *NewImage, int matrix, int width, int height)
  {  
-    /*
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    */
-
     //each block is assigned to a row of an image, iy integer index of y
-    int iy = blockIdx.x + (MATRIX - 1)/2;
     //each thread is assigned to a pixel of a row, ix integer index of x
+    int iy = blockIdx.x + (MATRIX - 1)/2;
     int ix = threadIdx.x + (MATRIX - 1)/2;
 
-    
+    int center = (MATRIX -1)/2;
+    int idx = iy*width +ix;
+    int sum = 0;
+
+    int tid = threadIdx.x;
+    int K2 = MATRIX*MATRIX;
+    __shared__ float sdata[9];
+
+    if (tid<K2)
+    {
+        sdata[tid] = kernel[tid];
+    }
+    __syncthreads();
+
+    if (idx<width*height)
+    {
+        for (int ki = 0; ki<WMATRIX; ki++)
+            for (int kj = 0; kj<HMATRIX; kj++){
+            int ii = kj + ix - center;
+            int jj = ki + iy - center;
+            sum+=ImageData[jj*width+ii]*sdata[ki*MATRIX + kj];
+        }
+        NewImage[idx] = sum;
+  }
 
  }
 
 int main(int argc, char** argv)
 {
+    unsigned char* NewImage;
+
     for(int i = 1; i < argc; i++)
     // Check argument count
     if (argc < 2)
@@ -80,7 +100,7 @@ int main(int argc, char** argv)
     printf("Running CUDA Kernel...\r\n");
     dim3 blockSize(32, 32);
     dim3 gridSize(width / blockSize.x, height / blockSize.y);
-    2Dconvolution<<gridSize,blockSize>>(ptrImageDataGpu, MATRIX, width, height );
+    2Dconvolution<<gridSize,blockSize>>(ptrImageDataGpu, NewImage, MATRIX, width, height );
     printf(" DONE \r\n" ); 
  
     // Copy data from the gpu
@@ -89,8 +109,7 @@ int main(int argc, char** argv)
     printf(" DONE \r\n");
  
     // Build output filename
-    switch argc:
-    case 1
+
 
 
     switch(i) {
