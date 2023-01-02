@@ -32,22 +32,44 @@ __global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, int width, int h
 {
   int x = threadIdx.x + blockIdx.x * blockDim.x;
   int y = threadIdx.y + blockIdx.y * blockDim.y;
+  
+
 
   if(y < height && x < width)
     {   
             int Xkernel = 3;
             int Ykernel = 3;
-            for(int i = 0; i < Ykernel; i++)
+
+            int kernel[Ykernel][Xkernel] =
+            { 
+                {1,0,-1},
+                {1,0,-1},
+                {1,0,-1}
+            };
+
+        for(int i = 0; i < Ykernel; i++)
             {
                 for(int j = 0; j < Xkernel; j++)
-                {
+                {  
+                    int x_offset = x + i - 3/2;
+                    int y_offset = y + j - 3/2; 
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                     /*
                     Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
                     unsigned char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
-                    ptrPixel->r = 0;
-                    ptrPixel->g = 0;
+                    ptrPixel->r = pixelValue;
+                    ptrPixel->g = pixelValue;
                     ptrPixel->b = pixelValue;
                     ptrPixel->a = 255; 
-                    printf("test\r\n");      
+                    printf("test\r\n");
+                    */
+     
                 }
             } 
            

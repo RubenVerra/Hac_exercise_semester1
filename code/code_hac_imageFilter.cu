@@ -12,7 +12,20 @@
 #define WMATRIX 3
 #define HMATRIX 3
 
+void calculate_kernel(int kernel_size, float sigma, float *kernel){
 
+  int Nk2 = kernel_size*kernel_size;
+  float x,y, center;
+
+  center = (kernel_size-1)/2.0;
+  
+  for (int i = 0; i<Nk2; i++){
+    x = (float)(i%kernel_size)-center;
+    y =(float)(i/kernel_size)-center;
+    kernel[i] = -(1.0/pi*pow(sigma,4))*(1.0 - 0.5*(x*x+y*y)/(sigma*sigma))*exp(-0.5*(x*x+y*y)/(sigma*sigma));
+  }
+
+}
  
 
  __global__ void Convolution(float *ImageData, float *kernel, float *NewImage, int matrix, int width, int height)
@@ -40,8 +53,8 @@
 
     if (idx<width*height)
     {
-        for (int ki = 0; ki<WMATRIX; ki++)
-            for (int kj = 0; kj<HMATRIX; kj++){
+        for (int ki = 0; ki<MATRIX; ki++)
+            for (int kj = 0; kj<MATRIX; kj++){
              ii = kj + ix - center;
              jj = ki + iy - center;
             sum+=ImageData[jj*width+ii]*sdata[ki*MATRIX + kj];
@@ -54,7 +67,8 @@
 int main(int argc, char** argv)
 {
     float *kernel = (float*)malloc(MATRIX*MATRIX*sizeof(float));  
-
+    kernel_size = 3;
+    
     for(int i = 1; i < argc; i++)
     // Check argument count
     if (argc < 2)
@@ -90,6 +104,7 @@ int main(int argc, char** argv)
     
     printf(" DONE \r\n");
     */
+    calculate_kernel(kernel_size, sigma, kernel);
 
     // Copy data to the gpu
     printf("Copy data to GPU...\r\n");
@@ -108,7 +123,7 @@ int main(int argc, char** argv)
  
     // Copy data from the gpu
     printf("Copy data from GPU...\r\n");
-    cudaMemcpy(NewImage, ptrImageDataGpu, width * height * 4, cudaMemcpyDeviceToHost);
+    cudaMemcpy(imageData, ptrImageDataGpu, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
  
     // Build output filename
