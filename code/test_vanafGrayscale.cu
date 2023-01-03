@@ -22,7 +22,7 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
     float kernel[Ykernel][Xkernel] =
             { 
             {0, -1, 0},
-            {-1, 5, -1},
+            {-1, 8, -1},
             {0, -1, 0}
             };
 
@@ -43,20 +43,6 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
                     //printf("sum1 = %d\n ",sum1);
                 }
             }
-            
-            if(sum1 > 255 || sum1 < 0)
-            {
-                sum1 = 155;
-            }
-            if(sum2 > 255 || sum2 < 0)
-            {
-                sum2 = 155;
-            }
-             if(sum3 > 255 || sum3 < 0)
-            {
-                sum3 = 155;
-            }
-
             Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
             ptrPixel->r = sum1;
             ptrPixel->g = sum2;
@@ -65,8 +51,7 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
 
             sum1 = 0;
             sum2 = 0;
-            sum3 = 0;
-            
+            sum3 = 0;            
         }
     }
 }
