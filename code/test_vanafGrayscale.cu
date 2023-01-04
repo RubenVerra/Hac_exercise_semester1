@@ -138,26 +138,57 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height, unsi
         }
     }
 }
- /*
-__global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, int width, int height, unsigned char *NewImage )
+__global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, unsigned char *NewImage, int width, int height )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int kernelX = ;
-    int kernelY = ;
+    const int Ykernel = 3;
+    const int Xkernel = 3;
+    int sum1 = 0;
+    int sum2 = 0;
+    int sum3 = 0;
+    float kernel[Ykernel][Xkernel] =
+            {  
+            {0, -1, 0},
+            {-1, 8, -1},
+            {0, -1, 0}
+            };
 
 
   if(y < height && x < width)
     {
-            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-            unsigned char pixelValue = (unsigned char)(ptrPixel->r/3 + ptrPixel->g / 3 + ptrPixel->b / 3);
-            ptrPixel->r = pixelValue;
-            ptrPixel->g = pixelValue;
-            ptrPixel->b = pixelValue;
+            float sum = 0;
+            for (int i = 0; i < Ykernel; i++) {
+              for (int j = 0; j < Xkernel; j++) {
+                    int ky = i - Ykernel / 2;
+                    int kx = j - Xkernel / 2;
+
+                    int imy = y + ky;
+                    int imx = x + kx;
+
+                    if (imy >= 0 && imy < height && imx >= 0 && imx < width) {
+                      // Convolve the kernel with the image
+                      Pixel* ptrPixel = (Pixel*)&imageRGBA[imy * width * 4 + 4 * imx];
+                      char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
+                      sum1 += (pixelValue * kernel[i][j]);
+                      sum2 += (pixelValue * kernel[i][j]);
+                      sum3 += (pixelValue * kernel[i][j]);
+                    }
+              }
+            }
+                // Set the output value for the current pixel
+            Pixel* ptrPixel = (Pixel*)&NewImage[y * width * 4 + 4 * x];
+            ptrPixel->r = sum1;
+            ptrPixel->g = sum2;
+            ptrPixel->b = sum3;
             ptrPixel->a = 255;
-    }
+
+            sum1 = 0;
+            sum2 = 0;
+            sum3 = 0; 
+  }
 }
-*/
+
 
 int main(int argc, char** argv)
 {
@@ -175,7 +206,7 @@ int main(int argc, char** argv)
     unsigned char* imageData = stbi_load(argv[1], &width, &height, &componentCount, 4);
     unsigned char* NewImageData = (unsigned char *)malloc(width * height * 4);
     unsigned char* NewImageDataconv = (unsigned char *)malloc(width * height * 4);
-    unsigned char* OutputImage; 
+    unsigned char* OutputImage = (unsigned char *)malloc(width * height * 4); 
     if (!imageData)
     {
         printf("Failed to open Image\r\n");
@@ -195,7 +226,7 @@ int main(int argc, char** argv)
     
     // Process image on cpu
     printf("Processing image...\r\n");
-    ConvertImageToGrayCpu(imageData, width, height, NewImageDataconv);
+    //ConvertImageToGrayCpu(imageData, width, height, NewImageDataconv);
     //MaxPooling(imageData, width, height, NewImageData);
     printf(" DONE \r\n");
 
@@ -204,20 +235,24 @@ int main(int argc, char** argv)
     // Copy data to the gpu
     printf("Copy data to GPU...\r\n");
     unsigned char* ptrImageDataGpu = nullptr;
+    unsigned char* ptrImageOutGpu = nullptr;
     cudaMalloc(&ptrImageDataGpu, width * height * 4);
+    cudaMalloc(&ptrImageOutGpu, width * height * 4);
     cudaMemcpy(ptrImageDataGpu, imageData, width * height * 4, cudaMemcpyHostToDevice);
+    cudaMemcpy(ptrImageOutGpu, OutputImage, width * height * 4, cudaMemcpyHostToDevice);
     printf(" DONE \r\n");
   
     // Process image on gpu
     printf("Running CUDA Kernel...\r\n");
     dim3 blockSize(32, 32);
     dim3 gridSize(width / blockSize.x, height / blockSize.y);
-  //  ConvertImageToGrayGpu<<<gridSize, blockSize>>>(ptrImageDataGpu, height, width, OutputImage);
+    ConvertImageToGrayGpu<<<gridSize, blockSize>>>(ptrImageDataGpu, ptrImageOutGpu , height, width);
     printf(" DONE \r\n" ); 
  
     // Copy data from the gpu
     printf("Copy data from GPU...\r\n");
     cudaMemcpy(imageData, ptrImageDataGpu, width * height * 4, cudaMemcpyDeviceToHost);
+    cudaMemcpy(OutputImage, ptrImageOutGpu, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
  
     // Build output filename
@@ -225,13 +260,14 @@ int main(int argc, char** argv)
 
     // Write image back to disk
     printf("Writing png to disk...\r\n");
-    stbi_write_png(fileNameOut, width-2, height-2, 4, NewImageData, 4 * width);
-    //stbi_write_png(fileNameOut, width/2, height/2, 4, NewImageData, 4 * width/2);
+    //stbi_write_png(fileNameOut, width-1, height-1, 4, NewImageData, 4 * width);
+    stbi_write_png(fileNameOut, width-2, height-2, 4, OutputImage,  4*width);
 
     printf("DONE\r\n");
  
     // Free memory
     cudaFree(ptrImageDataGpu);
+    cudaFree(ptrImageOutGpu);
     stbi_image_free(imageData);
     
 }
