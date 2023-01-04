@@ -6,12 +6,62 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_write.h"
- 
+
+
+
 struct Pixel
 {
  unsigned char r, g, b, a;
 };
- 
+
+void MaxPooling(unsigned char* imageRGBA, int width, int height)
+{
+    const int Ykernel = 2;
+    const int Xkernel = 2;
+
+    int sum1 = 0;
+
+    float kernel[2][2] = {(0,0),(0,0)};
+    
+     int max = kernel[0][0];
+
+    for (int y = 0; y < height; y = y + 2){
+    
+        for (int x = 0; x < width; x = x + 2)
+        {
+            for(int i = 0; i < Ykernel; i++)
+            {
+                for(int j = 0; j < Xkernel; j++)
+                {
+                    Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+                    char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
+
+                    sum1 = pixelValue;
+
+                    kernel[i][j] = sum1;
+                    //printf("sum1 = %d\n ",sum1);
+                }
+            }
+            int max = kernel[0][0];
+            for(int r = 0; r < 2; r++){
+                for(int f = 0; f < 2; f++ ){
+                    if(max < kernel[r][f])
+                    {
+                        max = kernel[r][f];
+                    }
+                }
+            }
+
+            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+            ptrPixel->r = max;
+            ptrPixel->g = max;
+            ptrPixel->b = max;
+            ptrPixel->a = 255;           
+        }
+    }
+}
+
+
 void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
 {
     const int Ykernel = 3;
@@ -148,8 +198,11 @@ int main(int argc, char** argv)
     
     // Process image on cpu
     printf("Processing image...\r\n");
-    ConvertImageToGrayCpu(imageData, width, height);
+    //ConvertImageToGrayCpu(imageData, width, height);
+    MaxPooling(imageData, width, height);
     printf(" DONE \r\n");
+
+    
     
     // Copy data to the gpu
     printf("Copy data to GPU...\r\n");
