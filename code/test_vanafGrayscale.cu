@@ -94,7 +94,7 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
 }
 
 
-void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
+void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     const int Ykernel = 3;
     const int Xkernel = 3;
@@ -126,11 +126,11 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
                     //printf("sum1 = %d\n ",sum1);
                 }
             }
-            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-            ptrPixel->r = sum1;
-            ptrPixel->g = sum2;
-            ptrPixel->b = sum3;
-            ptrPixel->a = 255;
+            Pixel* ptrPxl = (Pixel*)&NewImageData[y * width * 4 + 4 * x];
+            ptrPxl->r = sum1;
+            ptrPxl->g = sum2;
+            ptrPxl->b = sum3;
+            ptrPxl->a = 255;
 
             sum1 = 0;
             sum2 = 0;
@@ -174,6 +174,7 @@ int main(int argc, char** argv)
     printf("Loading png file...\r\n");
     unsigned char* imageData = stbi_load(argv[1], &width, &height, &componentCount, 4);
     unsigned char* NewImageData = (unsigned char *)malloc(width * height * 4);
+    unsigned char* NewImageDataconv = (unsigned char *)malloc(width * height * 4);
     unsigned char* OutputImage; 
     if (!imageData)
     {
@@ -194,8 +195,8 @@ int main(int argc, char** argv)
     
     // Process image on cpu
     printf("Processing image...\r\n");
-    //ConvertImageToGrayCpu(imageData, width, height);
-    MaxPooling(imageData, width, height, NewImageData);
+    ConvertImageToGrayCpu(imageData, width, height, NewImageDataconv);
+    //MaxPooling(imageData, width, height, NewImageData);
     printf(" DONE \r\n");
 
     
@@ -224,8 +225,8 @@ int main(int argc, char** argv)
 
     // Write image back to disk
     printf("Writing png to disk...\r\n");
-    //stbi_write_png(fileNameOut, width-2, height-2, 4, NewImageData, 4 * width);
-    stbi_write_png(fileNameOut, width/2, height/2, 4, NewImageData, 4 * width/2);
+    stbi_write_png(fileNameOut, width-2, height-2, 4, NewImageData, 4 * width);
+    //stbi_write_png(fileNameOut, width/2, height/2, 4, NewImageData, 4 * width/2);
 
     printf("DONE\r\n");
  
