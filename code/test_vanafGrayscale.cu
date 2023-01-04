@@ -27,10 +27,10 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
      int max2 = 0;
      int max3 = 0;
 
-    for (int y = 0; y < height; y += 2)
+    for (int y = 0; y < height - 1; y++ )
     {
     
-        for (int x = 0; x < width; x += 2)
+        for (int x = 0; x < width - 1; x++)
         {
             for(int i = 0; i < Ykernel; i++)
             {
@@ -39,15 +39,16 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
                     Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
                     red[i][j] = ptrPixel->r;
                     green[i][j] = ptrPixel->g;
-                    blue[i][j] = ptrPixel->b;
-                                   
-                    //printf("sum1 = %d\n ",sum1);
-                    
-                    //printf("kernel = %d\n ",kernel[i][j]);
+                    blue[i][j] = ptrPixel->b;                           
                 }
             }
-            int max1 = red[0][0];
+
             
+            int max1 = red[0][0];
+            int max2 = green[0][0];
+            int max3 = blue[0][0];
+            
+            //check MVD red
             for(int r = 0; r < 2; r++)
             {
                 for(int f = 0; f < 2; f++ )
@@ -58,9 +59,7 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
                     }
                 }
             }
-
-            int max2 = green[0][0];
-            
+            //check MVD green
             for(int r = 0; r < 2; r++)
             {
                 for(int f = 0; f < 2; f++ )
@@ -71,9 +70,7 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
                     }
                 }
             }
-
-            int max3 = blue[0][0];
-            
+            //check MVD blue
             for(int r = 0; r < 2; r++)
             {
                 for(int f = 0; f < 2; f++ )
@@ -84,11 +81,17 @@ void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *
                     }
                 }
             }
+            
+            //put the values inside NewImageData
             Pixel* ptrPixela = (Pixel*)&NewImageData[y * width * 4 + 4 * x];
             ptrPixela->r = max1;
             ptrPixela->g = max2;
             ptrPixela->b = max3;
-            ptrPixela->a = 255;           
+            ptrPixela->a = 255; 
+
+            max1 = 0;          
+            max2 = 0;          
+            max3 = 0;          
         }
     }
 }
@@ -227,7 +230,11 @@ int main(int argc, char** argv)
     // Process image on cpu
     printf("Processing image...\r\n");
     //ConvertImageToGrayCpu(imageData, width, height, NewImageDataconv);
+<<<<<<< Updated upstream
     //MaxPooling(imageData, width, height, NewImageData);
+=======
+    MaxPooling(imageData, width, height, NewImageData);
+>>>>>>> Stashed changes
     printf(" DONE \r\n");
 
     
@@ -260,8 +267,13 @@ int main(int argc, char** argv)
 
     // Write image back to disk
     printf("Writing png to disk...\r\n");
+<<<<<<< Updated upstream
     //stbi_write_png(fileNameOut, width-1, height-1, 4, NewImageData, 4 * width);
     stbi_write_png(fileNameOut, width-2, height-2, 4, OutputImage,  4*width);
+=======
+    //stbi_write_png(fileNameOut, width-2, height-2, 4, NewImageDataconv, 4 * width);
+    stbi_write_png(fileNameOut, width/2, height/2, 4, NewImageData, 4 * width/2);
+>>>>>>> Stashed changes
 
     printf("DONE\r\n");
  
