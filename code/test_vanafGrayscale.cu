@@ -14,49 +14,81 @@ struct Pixel
  unsigned char r, g, b, a;
 };
 
-void MaxPooling(unsigned char* imageRGBA, int width, int height)
+void MaxPooling(unsigned char* imageRGBA, int width, int height, unsigned char *NewImageData )
 {
     const int Ykernel = 2;
     const int Xkernel = 2;
 
-    int sum1 = 0;
-
-    float kernel[2][2] = {(0,0),(0,0)};
+    unsigned char red[2][2];
+    unsigned char blue[2][2];
+    unsigned char green[2][2];    
     
-     int max = kernel[0][0];
+     int max1 = 0;
+     int max2 = 0;
+     int max3 = 0;
 
-    for (int y = 0; y < height; y = y + 2){
+    for (int y = 0; y < height; y += 2)
+    {
     
-        for (int x = 0; x < width; x = x + 2)
+        for (int x = 0; x < width; x += 2)
         {
             for(int i = 0; i < Ykernel; i++)
             {
                 for(int j = 0; j < Xkernel; j++)
                 {
                     Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-                    char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
-
-                    sum1 = pixelValue;
-
-                    kernel[i][j] = sum1;
+                    red[i][j] = ptrPixel->r;
+                    green[i][j] = ptrPixel->g;
+                    blue[i][j] = ptrPixel->b;
+                                   
                     //printf("sum1 = %d\n ",sum1);
+                    
+                    //printf("kernel = %d\n ",kernel[i][j]);
                 }
             }
-            int max = kernel[0][0];
-            for(int r = 0; r < 2; r++){
-                for(int f = 0; f < 2; f++ ){
-                    if(max < kernel[r][f])
+            int max1 = red[0][0];
+            
+            for(int r = 0; r < 2; r++)
+            {
+                for(int f = 0; f < 2; f++ )
+                {
+                    if(max1 < red[r][f])
                     {
-                        max = kernel[r][f];
+                        max1 = red[r][f];
                     }
                 }
             }
 
-            Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-            ptrPixel->r = max;
-            ptrPixel->g = max;
-            ptrPixel->b = max;
-            ptrPixel->a = 255;           
+            int max2 = green[0][0];
+            
+            for(int r = 0; r < 2; r++)
+            {
+                for(int f = 0; f < 2; f++ )
+                {
+                    if(max2 < green[r][f])
+                    {
+                        max2 = green[r][f];
+                    }
+                }
+            }
+
+            int max3 = blue[0][0];
+            
+            for(int r = 0; r < 2; r++)
+            {
+                for(int f = 0; f < 2; f++ )
+                {
+                    if(max3 < blue[r][f])
+                    {
+                        max3 = blue[r][f];
+                    }
+                }
+            }
+            Pixel* ptrPixela = (Pixel*)&NewImageData[y * width * 4 + 4 * x];
+            ptrPixela->r = max1;
+            ptrPixela->g = max2;
+            ptrPixela->b = max3;
+            ptrPixela->a = 255;           
         }
     }
 }
@@ -70,7 +102,7 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
     int sum2 = 0;
     int sum3 = 0;
     float kernel[Ykernel][Xkernel] =
-            { 
+            {  
             {0, -1, 0},
             {-1, 8, -1},
             {0, -1, 0}
@@ -86,6 +118,7 @@ void ConvertImageToGrayCpu(unsigned char* imageRGBA, int width, int height)
                 for(int j = 0; j <Xkernel; j++)
                 {
                     Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+                    
                     char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
                     sum1 += (pixelValue * kernel[i][j]);
                     sum2 += (pixelValue * kernel[i][j]);
@@ -110,6 +143,9 @@ __global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, int width, int h
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
+    int kernelX = ;
+    int kernelY = ;
+
 
   if(y < height && x < width)
     {
@@ -120,47 +156,6 @@ __global__ void ConvertImageToGrayGpu(unsigned char* imageRGBA, int width, int h
             ptrPixel->b = pixelValue;
             ptrPixel->a = 255;
     }
-
-}
-
-
-  if(y < height && x < width)
-    {  
-
-         
-            const int Xkernel = 3;
-            const int Ykernel = 3;
-
-            int kernel[Ykernel][Xkernel] =
-            { 
-                {1,0,-1},
-                {1,0,-1},
-                {1,0,-1}
-            };
-
-        for(int i = 0; i < Ykernel; i++)
-            {
-                int value = 0;
-                for(int j = 0; j < Xkernel; j++)
-                {  
-                    int x_offset = x + i - 3/2;
-                    int y_offset = y + j - 3/2; 
-                    
-                    if(x_offset >= 0 && x_offset < width && y_offset >= 0 && y_offset < height)
-                    {
-                        Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-                        unsigned char pixelValue = (unsigned char)(ptrPixel->r ptrPixel->g + ptrPixel->b);
-                        int value = pixelValue;
-                    }
-                    NewImage = value * kernel[i][j];                
-                    
-                }
-            } 
-
-    }
-
-
-
 }
 */
 
@@ -178,6 +173,7 @@ int main(int argc, char** argv)
     int width, height, componentCount;
     printf("Loading png file...\r\n");
     unsigned char* imageData = stbi_load(argv[1], &width, &height, &componentCount, 4);
+    unsigned char* NewImageData = (unsigned char *)malloc(width * height * 4);
     unsigned char* OutputImage; 
     if (!imageData)
     {
@@ -199,7 +195,7 @@ int main(int argc, char** argv)
     // Process image on cpu
     printf("Processing image...\r\n");
     //ConvertImageToGrayCpu(imageData, width, height);
-    MaxPooling(imageData, width, height);
+    MaxPooling(imageData, width, height, NewImageData);
     printf(" DONE \r\n");
 
     
@@ -228,7 +224,9 @@ int main(int argc, char** argv)
 
     // Write image back to disk
     printf("Writing png to disk...\r\n");
-    stbi_write_png(fileNameOut, width, height, 4, imageData, 4 * width);
+    //stbi_write_png(fileNameOut, width-2, height-2, 4, NewImageData, 4 * width);
+    stbi_write_png(fileNameOut, width/2, height/2, 4, NewImageData, 4 * width/2);
+
     printf("DONE\r\n");
  
     // Free memory
