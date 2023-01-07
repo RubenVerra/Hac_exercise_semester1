@@ -59,6 +59,48 @@ void MaxPooling(unsigned char *imageRGBA, int width, int height, unsigned char *
         }
     }
 }
+
+__global__ void MaxPooling(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= width / 2 || y >= height / 2)
+        return; // check if the thread is within the bounds of the image
+
+    Pixel *ptrPixela = (Pixel *)&NewImageData[y * (width/2) * 4 + 2 * x];
+    // Initialize max values to the first pixel in the 2x2 region
+    Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+    unsigned char MAXR = 0;
+    unsigned char MAXG = 0;
+    unsigned char MAXB = 0;
+
+    // Loop through the 2x2 region and find the max values for each color channel
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            //int currIndex = ((y+i)*width + (x+j)) * 4;
+            if(MAXR < ptrPixel->r)
+            {
+              MAXR = ptrPixel->r;
+            }
+            if(MAXG < ptrPixel->g)
+            {
+              MAXG = ptrPixel->g;
+            }
+            if(MAXB < ptrPixel->b)
+            {
+              MAXB = ptrPixel->b;
+            }
+        }
+    }
+
+    // Set the pixel in the new image to the max values
+    ptrPixela->r = MAXR;
+    ptrPixela->g = MAXG;
+    ptrPixela->b = MAXB;
+    ptrPixela->a = 255; // alpha channel is always 255
+}
 void MinPooling(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     int t = 0;
