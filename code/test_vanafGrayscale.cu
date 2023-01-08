@@ -362,7 +362,7 @@ int main(int argc, char** argv)
 	  cudaEventSynchronize(c_stopCPU);
 	  float elapsedTimeCPU;
 	  cudaEventElapsedTime(&elapsedTimeCPU, c_startCPU, c_stopCPU);
-	  printf("Time to complete CPU 2Dconvolution: %3.1f ms\n\r", elapsedTimeCPU);
+	  
 
 //-----------------------MaxpoolCPU--------------------------------------------------------
 
@@ -373,7 +373,7 @@ int main(int argc, char** argv)
     cudaEventSynchronize(max_stopCPU);
     float elapsedTimeMaxCPU;
     cudaEventElapsedTime(&elapsedTimeMaxCPU, max_startCPU, max_stopCPU);
-    printf("Time to complet CPU maxPooling : %3.1f ms\n\r", elapsedTimeMaxCPU);
+    
 
 //-----------------------MinPoolingCPU--------------------------------------------------------
 
@@ -385,7 +385,7 @@ int main(int argc, char** argv)
     cudaEventSynchronize(min_stopCPU);
     float elapsedTimeMinCPU;
     cudaEventElapsedTime(&elapsedTimeMinCPU, min_startCPU, min_stopCPU);
-    printf("Time to complete CPU minPooling: %3.1f ms\n\r", elapsedTimeMinCPU);
+    
 
 //-----------------------convolutionGPU--------------------------------------------------------
     printf(" DONE \r\n");
@@ -421,7 +421,7 @@ int main(int argc, char** argv)
     cudaEventSynchronize(c_stop);
     float elapsedTime;
     cudaEventElapsedTime(&elapsedTime, c_start, c_stop);
-    printf("Time to complete 2Dconvolution: %3.1f ms\n\r", elapsedTime);
+    
 
 //-----------------------MaxpoolGPU--------------------------------------------------------
 
@@ -454,8 +454,7 @@ int main(int argc, char** argv)
     cudaEventSynchronize(max_stop);
     float elapsedTimeMax;
     cudaEventElapsedTime(&elapsedTimeMax, max_start, max_stop);
-    printf("Time to complet maxPooling : %3.1f ms\n\r", elapsedTimeMax);
-
+    
 //-----------------------MinpoolGPU--------------------------------------------------------
 
     //start record cuda (MinPooling)
@@ -488,7 +487,7 @@ int main(int argc, char** argv)
     cudaEventSynchronize(min_stop);
     float elapsedTimeMin;
     cudaEventElapsedTime(&elapsedTimeMin, min_start, min_stop);
-    printf("Time to complete minPooling: %3.1f ms\n\r", elapsedTimeMin);
+    
  
 //-----------------------Make output file--------------------------------------------------------
 
@@ -517,8 +516,22 @@ int main(int argc, char** argv)
     stbi_write_png(fileNameOut_f, (width/2),(height/2), 4, OutputImageMinPool, 4 * (width/2));
 
     printf("DONE\r\n");
+//-----------------------CudaEventTimes------------------------------------------------------------
+
+
+//CPU
+    printf("Time to complet CPU maxPooling : %3.1f ms\n\r", elapsedTimeCPU);
+    printf("Time to complet CPU maxPooling : %3.1f ms\n\r", elapsedTimeMaxCPU);
+    printf("Time to complete CPU minPooling: %3.1f ms\n\r", elapsedTimeMinCPU);
+    printf("________________________________________________________\n\r");
+
+//GPU
+    printf("Time to complete GPU 2Dconvolution: %3.1f ms\n\r", elapsedTime);
+    printf("Time to complet GPU maxPooling : %3.1f ms\n\r", elapsedTimeMax);
+    printf("Time to complete GPU minPooling: %3.1f ms\n\r", elapsedTimeMin);
  
 //-----------------------free memory--------------------------------------------------------
+
 
     // Free memory
     cudaFree(ptrImageDataGpu);
