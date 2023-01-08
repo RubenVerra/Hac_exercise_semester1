@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "cuda.h"
@@ -63,43 +64,44 @@ __global__ void MaxPoolingGPU(unsigned char *imageRGBA, int width, int height, u
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    if (x >= width / 2 || y >= height / 2)
-        return; // check if the thread is within the bounds of the image
 
-    Pixel *ptrPixela = (Pixel *)&NewImageData[y * (width/2) * 4 + 2 * x];
-    // Initialize max values to the first pixel in the 2x2 region
-    Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
-    unsigned char MAXR = 0;
-    unsigned char MAXG = 0;
-    unsigned char MAXB = 0;
-
-    // Loop through the 2x2 region and find the max values for each color channel
-    for (int i = 0; i < 2; i++)
+    // Only process valid elements of the input and output arrays
+    if (x < width && y < height && x % 2 == 0 && y % 2 == 0)
     {
-        for (int j = 0; j < 2; j++)
+        int t = y * (width) + x*2;
+        Pixel *ptrPixela = (Pixel *)&NewImageData[t];
+        Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+        unsigned char MAXR = 0;
+        unsigned char MAXG = 0;
+        unsigned char MAXB = 0;
+
+        for (int i = 0; i < 2; i++)
         {
-            //int currIndex = ((y+i)*width + (x+j)) * 4;
-            if(MAXR < ptrPixel->r)
+            for (int j = 0; j < 2; j++)
             {
-              MAXR = ptrPixel->r;
-            }
-            if(MAXG < ptrPixel->g)
-            {
-              MAXG = ptrPixel->g;
-            }
-            if(MAXB < ptrPixel->b)
-            {
-              MAXB = ptrPixel->b;
+                if(MAXR < ptrPixel->r)
+                {
+                    MAXR = ptrPixel->r;
+                }
+                if(MAXG < ptrPixel->g)
+                {
+                    MAXG = ptrPixel->g;
+                }
+                if(MAXB < ptrPixel->b)
+                {
+                    MAXB = ptrPixel->b;
+                }
             }
         }
-    }
 
-    // Set the pixel in the new image to the max values
-    ptrPixela->r = MAXR;
-    ptrPixela->g = MAXG;
-    ptrPixela->b = MAXB;
-    ptrPixela->a = 255; // alpha channel is always 255
+        ptrPixela->r = MAXR;
+        ptrPixela->g = MAXG;
+        ptrPixela->b = MAXB;
+        ptrPixela->a = 255;
+    }
 }
+
+
 void MinPooling(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     int t = 0;
@@ -145,7 +147,8 @@ void MinPooling(unsigned char *imageRGBA, int width, int height, unsigned char *
     }
 }
 
-void convolution(unsigned char* imageRGBA, int width, int height, unsigned char *NewImageData)
+
+void convolutionCPU(unsigned char* imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     const int Ykernel = 3;
     const int Xkernel = 3;
@@ -189,10 +192,11 @@ void convolution(unsigned char* imageRGBA, int width, int height, unsigned char 
         }
     }
 }
-__global__ void convolution(unsigned char* imageRGBA, unsigned char *NewImage, int width, int height )
+__global__ void convolutionGPU(unsigned char* imageRGBA, unsigned char *NewImage, int width, int height )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
+    
     const int Ykernel = 3;
     const int Xkernel = 3;
     int sum1 = 0;
@@ -206,25 +210,27 @@ __global__ void convolution(unsigned char* imageRGBA, unsigned char *NewImage, i
             };
 
 
-  if(y < height && x < width)
+  if(y < (height-2) && x < (width-2) )
     {
             float sum = 0;
             for (int i = 0; i < Ykernel; i++) {
               for (int j = 0; j < Xkernel; j++) {
-                    int ky = i - Ykernel / 2;
-                    int kx = j - Xkernel / 2;
+                   // int ky = i - Ykernel / 2;
+                   // int kx = j - Xkernel / 2;
 
-                    int imy = y + ky;
-                    int imx = x + kx;
+                    //int imy = y + ky;
+                    //int imx = x + kx;
 
-                    if (imy >= 0 && imy < height && imx >= 0 && imx < width) {
+                    //if (imy >= 0 && imy < height && imx >= 0 && imx < width) {
                       // Convolve the kernel with the image
-                      Pixel* ptrPixel = (Pixel*)&imageRGBA[imy * width * 4 + 4 * imx];
+                      //Pixel* ptrPixel = (Pixel*)&imageRGBA[imy * width * 4 + 4 * imx];
+
+                      Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
                       char pixelValue = (unsigned char)(ptrPixel->r * 0.2126f + ptrPixel->g * 0.7152f + ptrPixel->b * 0.0722f);
                       sum1 += (pixelValue * kernel[i][j]);
                       sum2 += (pixelValue * kernel[i][j]);
                       sum3 += (pixelValue * kernel[i][j]);
-                    }
+                   // }
               }
             }
                 // Set the output value for the current pixel
@@ -288,7 +294,7 @@ int main(int argc, char** argv)
     printf("Processing image...\r\n");
     MaxPooling(imageData, width, height, NewImageDataMaxPool);
     MinPooling(imageData, width, height, NewImageDataMinPool);
-    convolution(imageData, width, height, NewImageDataconv);
+    convolutionCPU(imageData, width, height, NewImageDataconv);
     printf(" DONE \r\n");
 
     
@@ -307,7 +313,7 @@ int main(int argc, char** argv)
     printf("Running CUDA Kernel...\r\n");
     dim3 blockSize(32, 32);
     dim3 gridSize(width / blockSize.x, height / blockSize.y);
-    convolution<<<gridSize, blockSize>>>(ptrImageDataGpu, ptrImageOutGpu , height, width);
+    convolutionGPU<<<gridSize, blockSize>>>(ptrImageDataGpu, ptrImageOutGpu , height, width);
     printf(" DONE \r\n" ); 
  
     // Copy data from the gpu (convolution)
@@ -330,7 +336,10 @@ int main(int argc, char** argv)
 
 
     // Process image on gpu (MaxPooling)
-    printf("Running CUDA Kernel...\r\n"); 
+    printf("Running CUDA Kernel...\r\n");
+  
+
+   
     MaxPoolingGPU<<<gridSize, blockSize>>>(ptrImageDataGpuMx, width , height, ptrImageOutGpuMx);
     printf(" DONE \r\n" );
 
