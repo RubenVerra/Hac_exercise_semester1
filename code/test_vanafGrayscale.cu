@@ -408,7 +408,11 @@ int main(int argc, char** argv)
     // Copy data from the gpu (MaxPooling)
     printf("Copy data from GPU...\r\n");
     cudaMemcpy(imageData, ptrImageDataGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
+<<<<<<< Updated upstream
     cudaMemcpy(OutputImageMinPool, ptrImageOutGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
+=======
+    cudaMemcpy(OutputImageMaxPool, ptrImageOutGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
+>>>>>>> Stashed changes
     printf(" DONE \r\n");
 
 
@@ -434,7 +438,11 @@ int main(int argc, char** argv)
     //write out GPU
     stbi_write_png(fileNameOut_d, width-2, height-2, 4, OutputImage,  4*width);
     stbi_write_png(fileNameOut_e, (width/2),(height/2), 4, OutputImageMaxPool, 4 * (width/2));
+<<<<<<< Updated upstream
     stbi_write_png(fileNameOut_f, (width/2),(height/2), 4, OutputImageMinPool, 4 * (width/2));
+=======
+    stbi_write_png(fileNameOut_e, (width/2),(height/2), 4, OutputImageMinPool, 4 * (width/2));
+>>>>>>> Stashed changes
 
 
     printf("DONE\r\n");
