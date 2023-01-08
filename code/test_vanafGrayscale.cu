@@ -147,6 +147,46 @@ void MinPooling(unsigned char *imageRGBA, int width, int height, unsigned char *
     }
 }
 
+__global__ void MixPoolingGPU(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // Only process valid elements of the input and output arrays
+    if (x < width && y < height && x % 2 == 0 && y % 2 == 0)
+    {
+        int t = y * (width) + x*2;
+        Pixel *ptrPixela = (Pixel *)&NewImageData[t];
+        Pixel* ptrPixel = (Pixel*)&imageRGBA[y * width * 4 + 4 * x];
+        unsigned char MAXR = 255;
+        unsigned char MAXG = 255;
+        unsigned char MAXB = 255;
+
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+            {
+                if(MAXR > ptrPixel->r)
+                {
+                    MAXR = ptrPixel->r;
+                }
+                if(MAXG > ptrPixel->g)
+                {
+                    MAXG = ptrPixel->g;
+                }
+                if(MAXB > ptrPixel->b)
+                {
+                    MAXB = ptrPixel->b;
+                }
+            }
+        }
+
+        ptrPixela->r = MAXR;
+        ptrPixela->g = MAXG;
+        ptrPixela->b = MAXB;
+        ptrPixela->a = 255;
+    }
+}
 
 void convolutionCPU(unsigned char* imageRGBA, int width, int height, unsigned char *NewImageData)
 {
@@ -269,7 +309,9 @@ int main(int argc, char** argv)
 
     //GPU output
     unsigned char* OutputImage = (unsigned char *)malloc(width * height * 4);
-    unsigned char* OutputImageMaxPool = (unsigned char *)malloc(width * height * 4); 
+    unsigned char* OutputImageMaxPool = (unsigned char *)malloc(width * height * 4);
+    unsigned char* OutputImageMinPool = (unsigned char *)malloc(width * height * 4); 
+
 
     
     
@@ -336,10 +378,7 @@ int main(int argc, char** argv)
 
 
     // Process image on gpu (MaxPooling)
-    printf("Running CUDA Kernel...\r\n");
-  
-
-   
+    printf("Running CUDA Kernel...\r\n"); 
     MaxPoolingGPU<<<gridSize, blockSize>>>(ptrImageDataGpuMx, width , height, ptrImageOutGpuMx);
     printf(" DONE \r\n" );
 
@@ -349,6 +388,30 @@ int main(int argc, char** argv)
     cudaMemcpy(OutputImageMaxPool, ptrImageOutGpuMx, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
 
+
+
+    // Copy data to the gpu (MinPooling)
+    printf("Copy data to GPU...\r\n");
+    unsigned char* ptrImageDataGpuMn = nullptr;
+    unsigned char* ptrImageOutGpuMn = nullptr;
+    cudaMalloc(&ptrImageDataGpuMn, width * height * 4);
+    cudaMalloc(&ptrImageOutGpuMn, width * height * 4);
+    cudaMemcpy(ptrImageDataGpuMn, imageData, width * height * 4, cudaMemcpyHostToDevice);
+    cudaMemcpy(ptrImageOutGpuMn, OutputImageMinPool, width * height * 4, cudaMemcpyHostToDevice);
+    printf(" DONE \r\n");
+
+    // Process image on gpu (MaxPooling)
+    printf("Running CUDA Kernel...\r\n"); 
+    MinPoolingGPU<<<gridSize, blockSize>>>(ptrImageDataGpuMx, width , height, ptrImageOutGpuMn);
+    printf(" DONE \r\n" );
+
+    // Copy data from the gpu (MaxPooling)
+    printf("Copy data from GPU...\r\n");
+    cudaMemcpy(imageData, ptrImageDataGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
+    cudaMemcpy(OutputImageMinPool, ptrImageOutGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
+    printf(" DONE \r\n");
+
+
  
     // Build output filename
     const char * fileNameOut_a= "ConvCPU.png";
@@ -357,6 +420,7 @@ int main(int argc, char** argv)
 
     const char * fileNameOut_d= "ConvGPU.png";
     const char * fileNameOut_e= "MaxPoolGPU.png";
+    const char * fileNameOut_f= "MinPoolGPU.png";
 
 
     // Write image back to disk
@@ -370,6 +434,7 @@ int main(int argc, char** argv)
     //write out GPU
     stbi_write_png(fileNameOut_d, width-2, height-2, 4, OutputImage,  4*width);
     stbi_write_png(fileNameOut_e, (width/2),(height/2), 4, OutputImageMaxPool, 4 * (width/2));
+    stbi_write_png(fileNameOut_f, (width/2),(height/2), 4, OutputImageMinPool, 4 * (width/2));
 
 
     printf("DONE\r\n");
@@ -380,6 +445,7 @@ int main(int argc, char** argv)
 
     cudaFree(ptrImageDataGpuMx);
     cudaFree(ptrImageOutGpuMx);
+    cudaFree(ptrImageDataGpuMn);
 
     stbi_image_free(imageData);
     
