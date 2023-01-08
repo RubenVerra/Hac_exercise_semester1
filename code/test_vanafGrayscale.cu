@@ -15,6 +15,8 @@ struct Pixel
  unsigned char r, g, b, a;
 };
 
+#define N	50000
+
 void MaxPooling(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     int t = 0;
@@ -147,7 +149,7 @@ void MinPooling(unsigned char *imageRGBA, int width, int height, unsigned char *
     }
 }
 
-__global__ void MixPoolingGPU(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
+__global__ void MinPoolingGPU(unsigned char *imageRGBA, int width, int height, unsigned char *NewImageData)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -289,7 +291,24 @@ __global__ void convolutionGPU(unsigned char* imageRGBA, unsigned char *NewImage
 
 int main(int argc, char** argv)
 {
-
+    //GPU CUDA events
+    cudaEvent_t c_start, c_stop, max_start, max_stop, min_start, min_stop;
+    	cudaEventCreate(&c_start);
+	    cudaEventCreate(&c_stop);
+      cudaEventCreate(&max_start);
+	    cudaEventCreate(&max_stop);
+      cudaEventCreate(&min_start);
+	    cudaEventCreate(&min_stop);
+    
+    //CPU CUDA events
+    cudaEvent_t c_startCPU, c_stopCPU, max_startCPU, max_stopCPU, min_startCPU, min_stopCPU;
+    	cudaEventCreate(&c_startCPU);
+	    cudaEventCreate(&c_stopCPU);
+      cudaEventCreate(&max_startCPU);
+	    cudaEventCreate(&max_stopCPU);
+      cudaEventCreate(&min_startCPU);
+	    cudaEventCreate(&min_stopCPU);
+    
     // Check argument count
     if (argc < 2)
     {
@@ -334,12 +353,45 @@ int main(int argc, char** argv)
     
     // Process image on cpu
     printf("Processing image...\r\n");
-    MaxPooling(imageData, width, height, NewImageDataMaxPool);
-    MinPooling(imageData, width, height, NewImageDataMinPool);
+//--------------------------------------------------------------------------------
+
+    cudaEventRecord(c_startCPU, 0);
+
     convolutionCPU(imageData, width, height, NewImageDataconv);
+
+    cudaEventRecord(c_stopCPU, 0);
+	  cudaEventSynchronize(c_stopCPU);
+	  float elapsedTimeCPU;
+	  cudaEventElapsedTime(&elapsedTimeCPU, c_startCPU, c_stopCPU);
+	  printf("Time to complete CPU 2Dconvolution: %3.1f ms\n\r", elapsedTimeCPU);
+
+//--------------------------------------------------------------------------------
+
+    cudaEventRecord(max_startCPU, 0);
+    MaxPooling(imageData, width, height, NewImageDataMaxPool);
+
+    cudaEventRecord(max_stopCPU, 0);
+	  cudaEventSynchronize(max_stopCPU);
+	  float elapsedTimeMaxCPU;
+	  cudaEventElapsedTime(&elapsedTimeMaxCPU, max_startCPU, max_stopCPU);
+	  printf("Time to complet CPU maxPooling : %3.1f ms\n\r", elapsedTimeMaxCPU);
+
+//--------------------------------------------------------------------------------
+
+    cudaEventRecord(min_startCPU, 0);
+
+    MinPooling(imageData, width, height, NewImageDataMinPool);
+
+    cudaEventRecord(min_stopCPU, 0);
+	  cudaEventSynchronize(min_stopCPU);
+	  float elapsedTimeMinCPU;
+	  cudaEventElapsedTime(&elapsedTimeMinCPU, min_startCPU, min_stopCPU);
+	  printf("Time to complete CPU minPooling: %3.1f ms\n\r", elapsedTimeMinCPU);
+
+//--------------------------------------------------------------------------------
     printf(" DONE \r\n");
 
-    
+    cudaEventRecord(c_start, 0);
     
     // Copy data to the gpu
     printf("Copy data to GPU...\r\n");
@@ -364,7 +416,14 @@ int main(int argc, char** argv)
     cudaMemcpy(OutputImage, ptrImageOutGpu, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
 
-
+  	
+	  cudaEventRecord(c_stop, 0);
+	  cudaEventSynchronize(c_stop);
+	  float elapsedTime;
+	  cudaEventElapsedTime(&elapsedTime, c_start, c_stop);
+	  printf("Time to complete 2Dconvolution: %3.1f ms\n\r", elapsedTime);
+    
+    cudaEventRecord(max_start, 0);
 
     // Copy data to the gpu (MaxPooling)
     printf("Copy data to GPU...\r\n");
@@ -388,7 +447,13 @@ int main(int argc, char** argv)
     cudaMemcpy(OutputImageMaxPool, ptrImageOutGpuMx, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
 
+    cudaEventRecord(max_stop, 0);
+	  cudaEventSynchronize(max_stop);
+	  float elapsedTimeMax;
+	  cudaEventElapsedTime(&elapsedTimeMax, max_start, max_stop);
+	  printf("Time to complet maxPooling : %3.1f ms\n\r", elapsedTimeMax);
 
+    cudaEventRecord(min_start, 0);
 
     // Copy data to the gpu (MinPooling)
     printf("Copy data to GPU...\r\n");
@@ -400,18 +465,22 @@ int main(int argc, char** argv)
     cudaMemcpy(ptrImageOutGpuMn, OutputImageMinPool, width * height * 4, cudaMemcpyHostToDevice);
     printf(" DONE \r\n");
 
-    // Process image on gpu (MaxPooling)
+    // Process image on gpu (MinPooling)
     printf("Running CUDA Kernel...\r\n"); 
     MinPoolingGPU<<<gridSize, blockSize>>>(ptrImageDataGpuMx, width , height, ptrImageOutGpuMn);
     printf(" DONE \r\n" );
 
-    // Copy data from the gpu (MaxPooling)
+    // Copy data from the gpu (MinPooling)
     printf("Copy data from GPU...\r\n");
     cudaMemcpy(imageData, ptrImageDataGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
     cudaMemcpy(OutputImageMinPool, ptrImageOutGpuMn, width * height * 4, cudaMemcpyDeviceToHost);
     printf(" DONE \r\n");
 
-
+    cudaEventRecord(min_stop, 0);
+	  cudaEventSynchronize(min_stop);
+	  float elapsedTimeMin;
+	  cudaEventElapsedTime(&elapsedTimeMin, min_start, min_stop);
+	  printf("Time to complete minPooling: %3.1f ms\n\r", elapsedTimeMin);
  
     // Build output filename
     const char * fileNameOut_a= "ConvCPU.png";
